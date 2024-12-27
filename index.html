@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/light.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joonistamismäng</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        #topic-select {
+            margin-bottom: 20px;
+            height: 100px;
+        }
+        #word-container {
+            font-size: 24px;
+            margin: 20px;
+        }
+        #buttons-container {
+            margin: 20px;
+        }
+        #indicator {
+            margin: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="start">
+        <h1>Joonistamismäng</h1>
+        <label for="topic-select">Vali teemad:</label>
+        <select id="topic-select" multiple></select>
+        <button id="start-button">Alusta</button>
+    </div>
+
+    <div id="game" style="display:none">
+        <h1 id="word-container"></h1>
+
+        <div id="buttons-container">
+            <button id="visibility-button">Näita/peida sõna</button>
+            <button id="next-button">Järgmine sõna</button>
+            <button id="skip-button">Jäta sõna vahele</button>
+        </div>
+
+        <div id="indicator">
+            Tehtud: <span id="done-count">0</span> / Alles: <span id="remaining-count">0</span>
+        </div>
+    </div>
+
+    <div id="done" style="display:none">
+        <h1>Kõik sõnad tehtud!</h1>
+        <button id="restart-button">Algusesse tagasi</button>
+    </div>
+
+    <script>
+        const topics = {
+"Populaarsemad riigid": [
+"Prantsusmaa",
+"Hispaania",
+"Ameerika Ühendriigid",
+"Hiina",
+"Itaalia",
+"Türgi",
+"Mehhiko",
+"Saksamaa",
+"Tai",
+"Ühendkuningriik",
+"Jaapan",
+"Austria",
+"Kreeka",
+"Venemaa",
+"Portugal",
+"Kanada",
+"Holland",
+"Poola",
+"Lõuna-Korea",
+"Malaisia",
+"Hongkong",
+"Vietnam",
+"India",
+"Saudi Araabia",
+"Singapur",
+"Araabia Ühendemiraadid",
+"Indoneesia",
+"Šveits",
+"Tšehhi Vabariik",
+"Egiptus",
+],
+"Eesti vanasõnad 1":
+[
+"Enda silmas palki ei näe, teise silmas pindu küll.",
+"Enne töö, siis lõbu.",
+"Hirmul on suured silmad.",
+"Hommik on õhtust targem.",
+"Häda ajab härja kaevu.",
+"Igaüks on oma õnne sepp.",
+"Julge hundi rind on rasvane.",
+"Keelatud vili on magus.",
+"Kellel ei vea kaardimängus, veab armastuses.",
+"Kingitud hobuse suhu ei vaadata.",
+"Kus suitsu, seal tuld.",
+"Käbi ei kuku kännust kaugele.",
+"Lõpp hea, kõik hea.",
+"Naist kiida hommikul, ilma õhtul",
+"Põrsast kotis ei osteta.",
+"Suur tükk ajab suu lõhki",
+"Söö, mis küps, aga räägi, mis tõsi.",
+"Targem annab järele.",
+"Tänasida toimetusi ära viska homse varna.",
+"Tühi jutt toob tüli majja.",
+"Tühi kott ei seisa püsti.",
+"Tühi kõht on kõige parem kokk.",
+"Valel on lühikesed jalad.",
+"Õnnetus ei hüüa tulles.",
+"Ära hõiska enne õhtut.",
+"Üheksa korda mõõda, üks kord lõika.",
+"Ütle, kes on su sõbrad ja ma ütlen, kes oled sa ise.",
+],
+"2024 popculture":
+[
+"Apple Vision Pro - virtuaalreaalsusprillid",
+"Chat GPT - world domination",
+"Space X Starship - kosmoseraketid",
+"Taylor Swifti Eras Tour",
+"Facebook Threads - alternatiiv Twitterile (ehk X-le)",
+"Olümpiamängude laskmisvõistlustel Türgit esindanud Yusuf Dikec (tema iconic käsi taskus poos)",
+"Olümpiamängudel breakdancing osalenud Austraalia naine, kellest sai meem",
+"Trumpi võit USA presidendivalimistel",
+"Moo Deng - Tais loomaaias elav armas beebi jõehobune",
+"They’re eating the dogs, they’re eating the cats - Trump ütles debatil, et Ohios söövad Haiti immigrandid koduloomi, sellest tehti laul, millest sai meem",
+"Girl math",
+],
+"Eesti maakonnad":
+[
+"Harju maakond",
+"Hiiu maakond",
+"Ida-Viru maakond",
+"Jõgeva maakond",
+"Järva maakond",
+"Lääne maakond",
+"Lääne-Viru maakond",
+"Põlva maakond",
+"Pärnu maakond",
+"Rapla maakond",
+"Saare maakond",
+"Tartu maakond",
+"Valga maakond",
+"Viljandi maakond",
+"Võru maakond"
+],
+        };
+
+        const startEl = document.getElementById("start");
+        const gameEl = document.getElementById("game");
+        const doneEl = document.getElementById("done");
+
+        const topicSelect = document.getElementById("topic-select");
+        const wordContainer = document.getElementById("word-container");
+        const startButton = document.getElementById("start-button");
+        
+        const visibilityButton = document.getElementById("visibility-button");
+        const nextButton = document.getElementById("next-button");
+        const skipButton = document.getElementById("skip-button");
+        const doneCountEl = document.getElementById("done-count");
+        const remainingCountEl = document.getElementById("remaining-count");
+        
+        const restartButton = document.getElementById("restart-button");
+
+        let currentWords = [];
+        let doneWords = [];
+
+        for (let topic in topics) {
+            const option = document.createElement("option");
+            option.value = topic;
+            option.textContent = `${topic} (${topics[topic].length})`;
+            topicSelect.appendChild(option);
+        }
+
+        const updateTopics = (selectedTopics) => {
+            currentWords = [];
+            selectedTopics.forEach(topic => {
+                currentWords = currentWords.concat(topics[topic]);
+            });
+            doneWords = [];
+        };
+
+        startButton.addEventListener("click", () => {
+            const selectedTopics = Array.from(topicSelect.selectedOptions).map(option => option.value);
+            if (selectedTopics.length === 0) {
+                alert("Vali vähemalt üks teema.");
+                return;
+            }
+
+            updateTopics(selectedTopics);
+            startEl.style.display = "none";
+            gameEl.style.display = "block";
+
+            wordContainer.style.backgroundColor = "black";
+            getRandomWord();
+            updateWordAndIndicator();
+        });
+
+        visibilityButton.addEventListener("click", () => {
+            wordContainer.style.backgroundColor = wordContainer.style.backgroundColor === "black" ? "" : "black";
+        });
+
+        nextButton.addEventListener("click", () => {
+            if (currentWords.length > 0) {
+                currentWords = currentWords.filter(item => item !== wordContainer.textContent);
+                wordContainer.style.backgroundColor = "black";
+                const nextWord = getRandomWord();
+                doneWords.push(nextWord);
+                updateWordAndIndicator();
+            }
+        });
+
+        skipButton.addEventListener("click", () => {
+            if (currentWords.length > 0) {
+                wordContainer.style.backgroundColor = "black";
+                getRandomWord();
+                updateWordAndIndicator();
+            }
+        });
+
+        const getRandomWord = () => {
+            const randomIndex = Math.floor(Math.random() * currentWords.length);
+            const word = currentWords[randomIndex];
+            wordContainer.textContent = word;
+            return word;
+        };
+
+        const updateWordAndIndicator = () => {
+            doneCountEl.textContent = doneWords.length;
+            remainingCountEl.textContent = currentWords.length;
+            if (currentWords.length === 0) {
+                gameEl.style.display = "none";
+                doneEl.style.display = "block";
+            }
+        };
+
+        restartButton.addEventListener("click", () => {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>
